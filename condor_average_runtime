@@ -1,0 +1,1 @@
+condor_history -format '%f\n' remotewallclocktime -match 10 | awk '{total += $1; count += 1} END {print total/count}'

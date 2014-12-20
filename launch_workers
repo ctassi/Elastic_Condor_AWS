@@ -1,0 +1,13 @@
+#!/bin/bash
+
+count=$1
+image="ami-7bf4bf4b"
+itype="t2.micro"
+key="cloud-comp"
+secGroup="Allow all"
+
+name=`hostname -f`
+cmd="#!/etc/boot_as_worker $name"
+data=`echo $cmd | base64`
+
+aws ec2 run-instances --image-id $image --count $count --instance-type $itype --key-name $key --security-groups "$secGroup" --user-data "$data" 

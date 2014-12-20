@@ -1,0 +1,100 @@
+#!/bin/bash
+
+PATH="/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin:/usr/local/condor/bin/:/home/ec2-user/bin"
+
+min=2
+max=20
+
+scaleFactor=".5"
+killTime=50
+
+
+function tryKill() {
+	local launchMin=`aws ec2 describe-instances --filters Name=private-dns-name,Values=$1 | grep -i "launchtime" | cut -d\" -f4 | cut -d: -f2`
+	if [ -z "$launchMin" ]
+	then
+		return 0;	# It's probably already dead, so return success
+	fi
+	local currMin=`date +%M`
+	local t=`python -c "print (($currMin - $launchMin) % 60)"`
+	if [ "$t" -ge "$killTime" ]
+	then
+		./kill_worker $1 > /dev/null
+		return 0;
+	else
+		return 1;
+	fi
+
+	return 1;
+}
+
+
+# Get pool info
+pool=`condor_status -autoformat Name Activity State` || exit
+n=`echo "$pool" | wc -l`
+nIdle=`echo "$pool" | grep -c Idle`
+nActive=$(expr $n - $nIdle)
+
+# Get queue info
+jobInfo=`condor_q -global -autoformat JobStatus`
+idleJobs=`echo "$jobInfo" | grep -c 1`
+nJobs=`echo "$jobInfo" | grep -cE "[0-9]+"`
+runtime=`condor_history -format '%f\n' remotewallclocktime -match 10 | awk '{total += $1; count += 1} END {print total/count}'`
+JpH=`bc -l <<< "3600 / $runtime"`
+if [ -z "$JpH" ]
+then
+	JpH=60	# Estimate 1 minute per job if no info available
+fi
+
+#Export info
+echo -e `date`"\t$n\t$nIdle\t$nJobs\t$idleJobs" >> /tmp/condor_log
+
+# Check against min
+if [ "$n" -lt "$min" ]
+then
+	toAdd=$(expr $min - $n)
+	./launch_workers $toAdd
+	exit
+fi
+
+
+# Calc target machine number
+target=`python -c "import math; print int(min($nJobs, math.ceil($nJobs / $JpH)))"` || exit
+
+if [ "$target" -lt "$min" ]
+then
+	target=$min
+fi
+
+if [ "$target" -gt "$max" ]
+then
+	target=$max
+fi
+
+# If target is higher than pool size, run allocation policy
+if [ "$n" -lt "$target" ]
+then
+	targetAlloc=$(expr $target - $n)
+	toAlloc=`python -c "import math; print int(math.ceil($targetAlloc * $scaleFactor))"`;
+	./launch_workers $toAlloc > /dev/null;
+	exit
+fi
+
+
+# If target is less than pool size, run termination policy
+if [ "$n" -gt "$target" ]
+then
+	targetKill=$( expr $n - $target )
+	names=$( echo "$pool" | grep -v `hostname -f` | grep -i "idle" | cut -d' ' -f1 )
+	for i in $names
+	do
+		if tryKill $i
+		then
+			targetKill=$( expr $targetKill - 1 )
+			if [ "$targetKill" -eq "0" ]
+			then
+				exit
+			fi
+		fi
+	done
+fi

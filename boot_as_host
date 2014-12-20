@@ -1,0 +1,6 @@
+#!/bin/sh
+domain=`hostname -d`
+cd /var/condor
+sed -i.bak -e "s/<domain>/$domain/" condor_config.host
+ln -sf condor_config.host condor_config.local
+/usr/local/condor/sbin/condor_master

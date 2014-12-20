@@ -1,0 +1,70 @@
+CONDOR_HOST = $(FULL_HOSTNAME)
+COLLECTOR_NAME = EC2 condor pool
+###############################################################################
+# Pool settings
+###############################################################################
+# EC2 workers don't have shared filesystems or authentication
+UID_DOMAIN = <domain>
+FILESYSTEM_DOMAIN = $(FULL_HOSTNAME)
+USE_NFS = False
+USE_AFS = False
+USE_CKPT_SERVER = False
+# The same for all machines with the same condor user
+CONDOR_IDS = 500.501
+###############################################################################
+# Local paths
+###############################################################################
+RELEASE_DIR = /usr/local/condor
+LOCAL_DIR = /var/condor
+# LOG and EXECUTE are set automatically by the startup script. They can't be
+# changed here.
+LOG = $(LOCAL_DIR)/log
+EXECUTE = $(LOCAL_DIR)/execute
+LOCK = $(LOG)
+###############################################################################
+# Security settings
+###############################################################################
+# Allow local host and the central manager to manage the node
+ALLOW_ADMINISTRATOR = $(FULL_HOSTNAME), $(CONDOR_HOST)
+ALLOW_READ = *.<domain>
+ALLOW_WRITE = *.<domain>
+###############################################################################
+# CPU usage settings
+###############################################################################
+# Don't count a hyperthreaded CPU as multiple CPUs
+COUNT_HYPERTHREAD_CPUS = False
+# Leave this commented out. If your instance has more than one CPU (i.e. if
+# you use a large instance or something) then condor will advertise one
+# slot for each CPU.
+#NUM_CPUS = 1
+###############################################################################
+# Daemon settings
+###############################################################################
+# Full list on the host node
+DAEMON_LIST = COLLECTOR, MASTER, NEGOTIATOR, SCHEDD, STARTD
+# Don't run java
+JAVA =
+###############################################################################
+# Classads
+###############################################################################
+# Run everything, all the time
+START = True
+SUSPEND = False
+CONTINUE = True
+PREEMPT = False
+WANT_VACATE = False
+WANT_SUSPEND = True
+SUSPEND_VANILLA = False
+WANT_SUSPEND_VANILLA = True
+KILL = False
+STARTD_EXPRS = START
+###############################################################################
+# Network settings
+###############################################################################
+# Use random numbers here so the workers don't all hit the collector at
+# the same time. If there are many workers the collector can get overwhelmed.
+UPDATE_INTERVAL = $RANDOM_INTEGER(230, 370)
+MASTER_UPDATE_INTERVAL = $RANDOM_INTEGER(230, 370)
+# Port range for Amazon firewall
+LOWPORT=50000
+HIGHPORT=50100
