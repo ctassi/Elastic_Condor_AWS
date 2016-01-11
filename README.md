@@ -7,6 +7,8 @@ cost efficiency, and responsiveness.
 
 ●	HTCondor 8.2.4 & Amazon Elastic Compute Cloud
 
+[Read the full analysis and concept here](https://webfile.nd.edu/~chorale/apps/webfile?submit=tofile&branch=0&dir=./www&user=chorale&doc=CloudFinalReport.pdf)
+
 Manage_pool script:  For the pool manager, we designed a Cron job that was scheduled to automatically 
 run our pool management script every 5 minutes. This script evaluates the current state of the worker pool and 
 job queue and adjusts the pool size as needed. Thus, the pool can respond to changes in work conditions within 5 minutes. 
